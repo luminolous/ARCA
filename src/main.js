@@ -287,6 +287,22 @@ model2Select.addEventListener('change', (e) => {
   if (rightPane) handleLoad(rightPane, stem, false);
 });
 
+function applyOrientation(pane, yawDeg, pitchDeg) {
+  if (yawDeg == null || pitchDeg == null) return;
+  const target = pane.controls.target;
+  const distance = pane.camera.position.distanceTo(target);
+  const yaw = THREE.MathUtils.degToRad(yawDeg);
+  const pitch = THREE.MathUtils.degToRad(pitchDeg);
+  pane.camera.position.set(
+    target.x + distance * Math.cos(pitch) * Math.sin(yaw),
+    target.y + distance * Math.sin(pitch),
+    target.z + distance * Math.cos(pitch) * Math.cos(yaw),
+  );
+  pane.camera.lookAt(target);
+  pane.controls.update();
+  pane.requestRender();
+}
+
 function handleLoad(pane, stem, isLeft) {
   if (isLeft) statusEl.textContent = 'Loading...';
   pane.loadStem(stem).then(({ result }) => {
@@ -307,6 +323,7 @@ function handleLoad(pane, stem, isLeft) {
     }
     if (currentInspectMode !== 'lit') pane.applyView(currentInspectMode);
     setActiveButton(currentInspectMode);
+    if (isLeft) applyOrientation(pane, state.yaw, state.pitch);
   }).catch((err) => {
     console.error('Load failed', err);
     if (isLeft) statusEl.textContent = 'Load failed';

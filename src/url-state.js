@@ -16,6 +16,8 @@ const DEFAULTS = Object.freeze({
   sync: 1,
   bg: 1,
   shot: 0,
+  yaw: null,
+  pitch: null,
 });
 
 const HDRI_VALUES = new Set(['studio', 'outdoor', 'museum']);
@@ -52,6 +54,8 @@ export function readState() {
     sync: parseFlag(params.get('sync'), DEFAULTS.sync),
     bg: parseFlag(params.get('bg'), DEFAULTS.bg),
     shot: parseFlag(params.get('shot'), DEFAULTS.shot),
+    yaw: params.get('yaw') !== null ? clampNumber(params.get('yaw'), null, -180, 180) : null,
+    pitch: params.get('pitch') !== null ? clampNumber(params.get('pitch'), null, -89, 89) : null,
   };
 
   currentState = state;
@@ -72,6 +76,8 @@ function serialize(state) {
   }
   if (state.bg !== DEFAULTS.bg) params.set('bg', String(state.bg));
   if (state.shot !== DEFAULTS.shot) params.set('shot', String(state.shot));
+  if (state.yaw != null) params.set('yaw', state.yaw.toFixed(2));
+  if (state.pitch != null) params.set('pitch', state.pitch.toFixed(2));
   return params.toString();
 }
 
