@@ -305,7 +305,7 @@ function applyOrientation(pane, yawDeg, pitchDeg) {
 
 function handleLoad(pane, stem, isLeft) {
   if (isLeft) statusEl.textContent = 'Loading...';
-  pane.loadStem(stem).then(({ result }) => {
+  pane.loadStem(stem).then((result) => {
     if (isLeft) {
       statusEl.textContent = `Loaded ${stem}`;
       enableInspectButtons();
