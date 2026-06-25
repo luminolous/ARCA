@@ -17,6 +17,7 @@
           <span class="wordmark-dot" aria-hidden="true"></span>
         </div>
         <div class="topbar-controls">
+          <button type="button" id="compare-toggle" class="btn-quiet" aria-pressed="false">Compare</button>
           <label class="select-field">
             <span class="visually-hidden">Environment</span>
             <select id="hdri-select" class="select-quiet" aria-label="Environment">
@@ -28,7 +29,26 @@
           <div id="status" class="status" role="status" aria-live="polite"></div>
         </div>
       </header>
+      <button type="button" id="gallery-toggle" class="rail-toggle rail-toggle-left" aria-label="Collapse gallery" aria-expanded="true">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <polyline points="15 6 9 12 15 18"/>
+        </svg>
+      </button>
+      <button type="button" id="inspect-toggle" class="rail-toggle rail-toggle-right" aria-label="Collapse inspect" aria-expanded="true">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <polyline points="9 6 15 12 9 18"/>
+        </svg>
+      </button>
       <canvas id="stage"></canvas>
+      <div id="pane-label-left" class="pane-label" hidden></div>
+      <canvas id="stage2" hidden></canvas>
+      <div id="pane-controls-right" class="pane-controls" hidden>
+        <label class="select-field">
+          <span class="visually-hidden">Second model</span>
+          <select id="model2-select" class="select-quiet" aria-label="Second model"></select>
+        </label>
+        <div id="pane-label-right" class="pane-label"></div>
+      </div>
       <aside id="gallery-rail" class="gallery-rail glass" aria-label="Gallery">
         <h2 class="panel-heading">Gallery</h2>
         <div class="panel-divider"></div>
@@ -56,6 +76,13 @@
         </div>
         <div class="panel-divider"></div>
         <div id="display-gui" class="display-gui"></div>
+        <div id="compare-controls" class="compare-controls" hidden>
+          <div class="panel-divider"></div>
+          <label class="sync-toggle">
+            <input type="checkbox" id="sync-toggle" checked>
+            <span>Sync cameras</span>
+          </label>
+        </div>
       </aside>
     </div>
     <script type="module" src="/src/main.js"></script>

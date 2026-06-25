@@ -12,6 +12,8 @@ const DEFAULTS = Object.freeze({
   tone: 'aces',
   view: 'lit',
   mode: 'single',
+  model2: null,
+  sync: 1,
   bg: 1,
   shot: 0,
 });
@@ -46,6 +48,8 @@ export function readState() {
     tone: TONE_VALUES.has(params.get('tone')) ? params.get('tone') : DEFAULTS.tone,
     view: VIEW_VALUES.has(params.get('view')) ? params.get('view') : DEFAULTS.view,
     mode: MODE_VALUES.has(params.get('mode')) ? params.get('mode') : DEFAULTS.mode,
+    model2: params.get('model2') || DEFAULTS.model2,
+    sync: parseFlag(params.get('sync'), DEFAULTS.sync),
     bg: parseFlag(params.get('bg'), DEFAULTS.bg),
     shot: parseFlag(params.get('shot'), DEFAULTS.shot),
   };
@@ -62,6 +66,10 @@ function serialize(state) {
   if (state.tone !== DEFAULTS.tone) params.set('tone', state.tone);
   if (state.view !== DEFAULTS.view) params.set('view', state.view);
   if (state.mode !== DEFAULTS.mode) params.set('mode', state.mode);
+  if (state.mode === 'compare') {
+    if (state.model2) params.set('model2', state.model2);
+    if (state.sync !== DEFAULTS.sync) params.set('sync', String(state.sync));
+  }
   if (state.bg !== DEFAULTS.bg) params.set('bg', String(state.bg));
   if (state.shot !== DEFAULTS.shot) params.set('shot', String(state.shot));
   return params.toString();
