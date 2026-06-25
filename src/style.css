@@ -171,6 +171,78 @@ html, body {
   display: block;
 }
 
+.gallery-rail {
+  position: fixed;
+  top: 56px;
+  left: 0;
+  bottom: 0;
+  width: 280px;
+  padding: 24px 16px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  border-right: 1px solid var(--ink-hairline);
+  z-index: 9;
+  overflow: hidden;
+}
+
+.gallery-rail .panel-heading,
+.gallery-rail .panel-divider {
+  padding-left: 8px;
+}
+
+.gallery-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, 96px);
+  gap: 12px;
+  padding: 4px 8px 16px;
+  overflow-y: auto;
+  flex: 1;
+  align-content: start;
+  justify-content: start;
+}
+
+.gallery-card {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+  width: 96px;
+  padding: 0;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: transform 160ms ease-out, box-shadow 160ms ease-out, border-color 160ms ease-out;
+}
+
+.gallery-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-low);
+}
+
+.gallery-card.is-active {
+  border-color: var(--indigo);
+}
+
+.gallery-thumb {
+  width: 96px;
+  height: 96px;
+  border-radius: 4px;
+  background: var(--paper-edge);
+  object-fit: cover;
+  display: block;
+}
+
+.gallery-stem {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--ink-mute);
+  text-align: left;
+  word-break: break-all;
+}
+
 .inspect-panel {
   position: fixed;
   top: 56px;
@@ -238,6 +310,31 @@ html, body {
 }
 
 @media (max-width: 1023px) {
+  .gallery-rail {
+    position: fixed;
+    top: 56px;
+    left: 0;
+    right: 0;
+    bottom: auto;
+    width: auto;
+    height: 132px;
+    padding: 8px 12px;
+    border-right: none;
+    border-bottom: 1px solid var(--ink-hairline);
+  }
+  .gallery-rail .panel-heading,
+  .gallery-rail .panel-divider {
+    display: none;
+  }
+  .gallery-grid {
+    grid-template-columns: none;
+    grid-auto-flow: column;
+    grid-auto-columns: 96px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 4px;
+  }
+
   .inspect-panel {
     top: auto;
     right: 0;
@@ -249,8 +346,8 @@ html, body {
     border-left: none;
     border-top: 1px solid var(--ink-hairline);
   }
-  .panel-heading,
-  .panel-divider {
+  .inspect-panel .panel-heading,
+  .inspect-panel .panel-divider {
     display: none;
   }
   .inspect-buttons {

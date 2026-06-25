@@ -1,18 +1,20 @@
-// Entry point. Builds the WebGL renderer with ARCA's tone mapping and paper
-// clear color, attaches the HDRI lighting manager, loads the first GLB
-// through the viewer module, and wires the inspect-panel buttons to the
-// material swap helper. Renders lazily: only when the controls report a
-// change or damping is still settling.
+// Entry point. Builds the WebGL renderer, attaches HDRI lighting and the
+// gallery rail, and drives model swaps. Each swap disposes the previous
+// model's geometry, materials, and textures, then re-applies the current
+// inspect mode so the user sees their chosen view on the new artifact.
+// Renders lazily: only when controls report a change or damping settles.
 
 import * as THREE from 'three';
 import { createViewer, loadModel } from './viewer.js';
 import { createLightingManager } from './lighting.js';
 import { createInspector, INSPECT_MODES } from './inspect.js';
+import { createGallery } from './gallery.js';
 
 const canvas = document.getElementById('stage');
 const statusEl = document.getElementById('status');
 const hdriSelect = document.getElementById('hdri-select');
 const inspectPanel = document.getElementById('inspect-panel');
+const galleryRail = document.getElementById('gallery-rail');
 
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
 renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -35,6 +37,8 @@ lighting.loadHDRI('studio').then(() => { needsRender = true; });
 const controls = createViewer({ canvas, scene, camera, renderer });
 
 let activeMesh = null;
+let activeRoot = null;
+let currentInspectMode = 'lit';
 const inspector = createInspector(() => activeMesh);
 
 function resize() {
@@ -61,28 +65,29 @@ function tick() {
 resize();
 tick();
 
-statusEl.textContent = 'Loading...';
+function disposeMaterial(material) {
+  for (const key of Object.keys(material)) {
+    const value = material[key];
+    if (value && value.isTexture) value.dispose();
+  }
+  material.dispose();
+}
 
-const modelUrl = './models/artefak_26824_low.glb';
-const stem = 'artefak_26824';
-
-loadModel(modelUrl, scene, camera, controls, renderer)
-  .then(({ object }) => {
-    object.traverse((node) => {
-      if (node.isMesh && !activeMesh) activeMesh = node;
-    });
-    statusEl.textContent = `Loaded ${stem}`;
-    enableInspectButtons();
-    needsRender = true;
-  })
-  .catch((err) => {
-    console.error('Failed to load model', err);
-    statusEl.textContent = 'Load failed';
+function disposeRoot(root) {
+  root.traverse((node) => {
+    if (node.isMesh) {
+      if (node.geometry) node.geometry.dispose();
+      if (node.material) {
+        if (Array.isArray(node.material)) {
+          node.material.forEach(disposeMaterial);
+        } else {
+          disposeMaterial(node.material);
+        }
+      }
+    }
   });
-
-hdriSelect.addEventListener('change', (e) => {
-  lighting.loadHDRI(e.target.value).then(() => { needsRender = true; });
-});
+  scene.remove(root);
+}
 
 const inspectButtons = Array.from(inspectPanel.querySelectorAll('[data-mode]'));
 
@@ -95,7 +100,6 @@ function setActiveButton(mode) {
 
 function enableInspectButtons() {
   for (const btn of inspectButtons) btn.disabled = false;
-  setActiveButton('lit');
 }
 
 for (const btn of inspectButtons) {
@@ -104,7 +108,58 @@ for (const btn of inspectButtons) {
     const mode = btn.dataset.mode;
     if (!INSPECT_MODES.includes(mode)) return;
     inspector.setMode(mode);
+    currentInspectMode = mode;
     setActiveButton(mode);
     needsRender = true;
   });
+}
+
+hdriSelect.addEventListener('change', (e) => {
+  lighting.loadHDRI(e.target.value).then(() => { needsRender = true; });
+});
+
+async function loadStem(stem) {
+  statusEl.textContent = 'Loading...';
+
+  if (activeRoot) {
+    inspector.reset();
+    disposeRoot(activeRoot);
+    activeRoot = null;
+    activeMesh = null;
+  }
+
+  try {
+    const result = await loadModel(`./models/${stem}_low.glb`, scene, camera, controls, renderer);
+    activeRoot = result.object;
+    result.object.traverse((node) => {
+      if (node.isMesh && !activeMesh) activeMesh = node;
+    });
+    statusEl.textContent = `Loaded ${stem}`;
+    enableInspectButtons();
+    if (currentInspectMode !== 'lit') {
+      inspector.setMode(currentInspectMode);
+    }
+    setActiveButton(currentInspectMode);
+    needsRender = true;
+  } catch (err) {
+    console.error('Failed to load model', err);
+    statusEl.textContent = 'Load failed';
+  }
+}
+
+const gallery = await createGallery({
+  container: galleryRail,
+  onSelect: (stem) => {
+    gallery.setActive(stem);
+    loadStem(stem);
+  },
+});
+
+const entries = gallery.getEntries();
+if (entries.length > 0) {
+  const firstStem = entries[0].stem;
+  gallery.setActive(firstStem);
+  loadStem(firstStem);
+} else {
+  statusEl.textContent = 'No models in manifest';
 }
