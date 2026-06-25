@@ -1,105 +1,92 @@
+<div align="center">
+
 # ARCA
 
-**Artefact Reconstruction with Computer graphics Application** — an interactive web viewer for Indonesian cultural artifacts reconstructed into 3D from a single photograph. Open one in the browser, orbit it, swap the lighting, inspect the materials. No installation, no plugin, runs on a laptop.
+Interactive 3D viewer for Indonesian cultural artifacts reconstructed from a single photograph.
 
-ARCA is the Jobdesk 3 deliverable of a five-person Computer Graphics final project. The 3D models come from a separate Stable Fast 3D pipeline (Jobdesk 1). ARCA itself does no reconstruction.
+[![Vite](https://img.shields.io/badge/Vite-5.4-646CFF?style=flat&logo=vite&logoColor=white)](https://vitejs.dev/)
+[![Three.js](https://img.shields.io/badge/Three.js-r170-000000?style=flat&logo=three.js&logoColor=white)](https://threejs.org/)
+[![JavaScript](https://img.shields.io/badge/JavaScript-vanilla-F7DF1E?style=flat&logo=javascript&logoColor=black)](https://developer.mozilla.org/en-US/docs/Web/JavaScript)
+[![Hugging Face](https://img.shields.io/badge/Hugging%20Face-Space-FFD21E?style=flat&logo=huggingface&logoColor=black)](https://huggingface.co/spaces/lumicero/arca)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-## Demo
+[**Live demo**](https://huggingface.co/spaces/lumicero/arca) · [Report an issue](https://github.com/luminolous/arca/issues)
 
-Live: https://huggingface.co/spaces/lumicero/arca
+<br />
 
-## Run locally
+<img src="public/images/preview.jpg" alt="ARCA viewer showing a reconstructed artifact with the gallery rail on the left and the inspect panel on the right" width="820" />
 
-```bash
-git clone https://github.com/luminolous/arca.git
-cd arca
-npm install
-npm run dev
-```
+</div>
 
-Open the URL Vite prints (defaults to `http://localhost:5173`).
+---
 
-Required assets before the viewer is useful:
+## About
 
-1. **GLB models**: Jobdesk 1 outputs in `public/models/`.
-2. **HDRI environments**: download from polyhaven.com into `public/hdri/` (see [SPEC.md](./SPEC.md) section 3.3 for filenames).
-3. **Manifest and thumbnails**: run `notebooks/01_offline_assets.ipynb` once to generate `public/manifest.json` and `public/thumbnails/`.
+ARCA is a static web viewer for 3D reconstructions of Indonesian cultural artifacts. The reconstructions come from a separate Stable Fast 3D pipeline that takes one photograph per artifact and writes a GLB file. ARCA loads those files in the browser so you can rotate the model, swap the lighting, inspect the materials, and export screenshots.
 
-## Build
-
-```bash
-npm run build
-```
-
-Output lands in `dist/`. The GitHub Action in [.github/workflows/deploy-hf.yml](./.github/workflows/deploy-hf.yml) pushes this to the Hugging Face Space on every commit to `main`.
+The viewer does not run any inference. What you see is exactly what the reconstruction pipeline produced. A reconstruction from a single photo is approximate by definition, and the inspect modes are there to make those approximations visible: a flat normal map, a wireframe, a base color view without lighting. The HDRI presets let you check how the material reads against different lighting environments before deciding whether a particular reconstruction is good enough to ship.
 
 ## Features
 
-- Load any GLB from the artifact set with auto-fit camera and OrbitControls
-- Three HDRI environment presets (studio, outdoor, museum)
-- Wireframe and four material-map inspect modes (base color, normal vector, normal map, roughness)
-- Gallery of all artifacts with click-to-load
-- Side-by-side compare two artifacts with optional camera sync
-- Exposure and tone mapping controls (ACES, Reinhard, Linear)
-- Metadata overlay showing vertex count, triangle count, file size, and reconstruction time
-- 2x screenshot export
-- Shareable URLs that round-trip every view setting
-- Collapsible gallery and inspect rails so the artifact can take the full stage
+- Load any GLB from the artifact set. The camera auto-fits to the bounding sphere and OrbitControls handles rotate, zoom, and pan.
+- Three HDRI environment presets, all from Poly Haven: studio, outdoor, museum. Image-based lighting via PMREM. Switching is instant after the first load because environments are cached.
+- Inspect modes for lit, wireframe, base color, normal vector, normal map, and roughness. Swapped materials are disposed on switch so memory stays bounded.
+- Gallery rail with one thumbnail per artifact. Click to swap the loaded model.
+- Side-by-side compare two artifacts with optional camera sync, so the same orbit lands in the same orientation on both panes.
+- Exposure slider (0.2 to 3.0) and tone mapping select (ACES, Reinhard, Linear) in a lil-gui panel.
+- Metadata pills showing vertex count, triangle count, file size, and reconstruction time pulled from the asset manifest.
+- PNG screenshot at 2x viewport resolution, named `<stem>_<view>.png`.
+- Every view setting round-trips through the URL, so a copied address restores the same camera, lighting, and inspect mode in a fresh tab.
+- Collapsible gallery and inspect rails so the artifact can take the full stage.
 
-## Project structure
+## Tech stack
 
-| Document | Purpose |
-|---|---|
-| [SPEC.md](./SPEC.md) | What ARCA does, inputs, outputs, URL schema, all feature definitions |
-| [DESIGN.md](./DESIGN.md) | Visual design system: palette, typography, layout, component patterns |
-| [PROMPTS.md](./PROMPTS.md) | Build sequence, one prompt per stage |
-| [CLAUDE.md](./CLAUDE.md) | Project conventions for AI-assisted development |
+| Layer | Choice | Why |
+|-------|--------|-----|
+| Frontend | Vanilla JavaScript, Vite, hand-written CSS | The viewer is one HTML file and a handful of ES modules. No framework, no CSS utility kit, no build complexity beyond what Vite gives for free. |
+| 3D | Three.js r170, official examples (GLTFLoader, DRACOLoader, KTX2Loader, RGBELoader, OrbitControls, PMREMGenerator) | The whole 3D stack is examples-jsm. No `three-stdlib`, no React reconciler. |
+| Controls | lil-gui | A single small library covers the exposure and tone mapping panel without dragging in a UI framework. |
+| Data | Static `public/manifest.json` and WebP thumbnails generated offline | No backend. The notebook produces every derived asset the viewer reads. |
+| Deploy | Hugging Face Space, `sdk: static`, pushed by a GitHub Action | Free static hosting, the Space repository tracks `dist/`, and the source of truth stays on GitHub. |
+
+## Project layout
 
 ```
+index.html          single-page entry
+vite.config.js
 src/
-├── main.js          entry, renderer + scene + pane orchestration
-├── viewer.js        GLB load, camera fit, OrbitControls
-├── lighting.js      PMREM environment + HDRI switcher
-├── inspect.js       wireframe + material-map material swaps
-├── compare.js       camera sync for side-by-side panes
-├── gallery.js       thumbnail grid + click-to-load
-├── metadata.js      bottom-bar pill populator
-├── screenshot.js    2x PNG export
-├── url-state.js     shareable URL read/write
-└── style.css        all styles
+  main.js           renderer, pane orchestration, control wiring
+  viewer.js         GLB load, camera fit, OrbitControls
+  lighting.js       PMREM environment + HDRI switcher
+  inspect.js        wireframe + material-map swaps
+  compare.js        camera sync for side-by-side panes
+  gallery.js        thumbnail grid, click-to-load
+  metadata.js       bottom-bar pill populator
+  screenshot.js     2x PNG export
+  url-state.js      shareable URL read/write
+  style.css         all styles
+public/
+  models/           GLB inputs from the reconstruction pipeline
+  hdri/             Poly Haven environment maps
+  thumbnails/       generated by notebook 01
+  manifest.json     generated by notebook 01
+  stats.json        generated by notebook 01
+  images/           preview asset for this README
+notebooks/
+  01_offline_assets.ipynb       parse manifest, render thumbnails, compute stats
+  02_screenshot_batch.ipynb     Playwright batch capture for downstream evaluation
+.github/workflows/
+  deploy-hf.yml     build and push dist/ to the Hugging Face Space on every commit to main
 ```
 
-## Deployment
+## Acknowledgments
 
-GitHub repository is the source of truth. The workflow at [.github/workflows/deploy-hf.yml](./.github/workflows/deploy-hf.yml) runs on every push to `main`:
-
-1. `npm ci`, `npm run build`.
-2. Downloads the Space's current `README.md` to preserve its YAML front matter.
-3. Uploads `dist/` to the Hugging Face Space via `huggingface_hub.HfApi.upload_folder` with `delete_patterns=['*']`.
-
-Required GitHub configuration:
-
-| Kind | Name | Value |
-|---|---|---|
-| Repository secret | `HF_TOKEN` | Fine-grained HF token with write access to the Space |
-| Repository variable | `HF_SPACE` | The Space repo id, e.g. `lumicero/arca` |
-
-The Space's README YAML must declare `sdk: static`.
-
-## Team and credits
-
-| Role | Responsibility |
-|---|---|
-| Jobdesk 1 | Preprocessing, Stable Fast 3D inference, GLB export |
-| Jobdesk 2 | Dataset curation and evaluation set assembly |
-| Jobdesk 3 | This viewer |
-| Jobdesk 4 | Quantitative evaluation and failure analysis |
-| Jobdesk 5 | Final report and documentation |
-
-Upstream model: [Stable Fast 3D](https://github.com/Stability-AI/stable-fast-3d) by Stability AI.
-
-HDRI environments from [Poly Haven](https://polyhaven.com) under CC0.
+- Upstream model: [Stable Fast 3D](https://github.com/Stability-AI/stable-fast-3d) by Stability AI
+- HDRI environments: [Poly Haven](https://polyhaven.com) under CC0
+- 3D engine and loaders: [Three.js](https://threejs.org/) and its `examples/jsm` collection
+- GUI: [lil-gui](https://github.com/georgealways/lil-gui)
+- Headless capture for batch screenshots: [Playwright](https://playwright.dev/)
 
 ## License
 
-Source code under MIT. Cultural artifact images respect the original sources cited in the Jobdesk 2 dataset record.
+Released under the MIT license. See [LICENSE](LICENSE).
