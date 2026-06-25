@@ -1,0 +1,95 @@
+name: Deploy to Hugging Face Space
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-hf
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      HF_TOKEN: ${{ secrets.HF_TOKEN }}
+      HF_SPACE: ${{ vars.HF_SPACE }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install npm dependencies
+        run: npm ci
+
+      - name: Build Vite bundle
+        run: npm run build
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install huggingface_hub
+        run: python -m pip install --upgrade "huggingface_hub>=0.24"
+
+      - name: Verify secrets and variables
+        run: |
+          if [ -z "$HF_TOKEN" ]; then echo "HF_TOKEN secret is missing" >&2; exit 1; fi
+          if [ -z "$HF_SPACE" ]; then echo "HF_SPACE variable is missing" >&2; exit 1; fi
+          echo "Deploying to Space: $HF_SPACE"
+
+      - name: Preserve Space README and upload dist
+        run: |
+          python <<'PY'
+          import os
+          from huggingface_hub import HfApi, hf_hub_download
+
+          space = os.environ['HF_SPACE']
+          token = os.environ['HF_TOKEN']
+          api = HfApi(token=token)
+
+          fallback_readme = """---
+          title: ARCA Artefact 3D Viewer
+          emoji: 壺
+          colorFrom: indigo
+          colorTo: pink
+          sdk: static
+          pinned: false
+          ---
+          """
+
+          try:
+              path = hf_hub_download(
+                  repo_id=space,
+                  filename='README.md',
+                  repo_type='space',
+                  token=token,
+              )
+              with open(path, 'r', encoding='utf-8') as f:
+                  readme = f.read()
+              print('Preserved existing Space README.md')
+          except Exception as ex:
+              print(f'No existing Space README found ({ex.__class__.__name__}); writing fallback YAML')
+              readme = fallback_readme
+
+          with open('dist/README.md', 'w', encoding='utf-8') as f:
+              f.write(readme)
+
+          api.upload_folder(
+              folder_path='dist',
+              repo_id=space,
+              repo_type='space',
+              token=token,
+              delete_patterns=['*'],
+              commit_message=f"Deploy {os.environ.get('GITHUB_SHA', '')[:7]} from GitHub Actions",
+          )
+          print('Upload complete')
+          PY
