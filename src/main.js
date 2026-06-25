@@ -6,9 +6,11 @@
 
 import * as THREE from 'three';
 import { createViewer, loadModel } from './viewer.js';
+import { createLightingManager } from './lighting.js';
 
 const canvas = document.getElementById('stage');
 const statusEl = document.getElementById('status');
+const hdriSelect = document.getElementById('hdri-select');
 
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
 renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -23,12 +25,8 @@ scene.background = new THREE.Color(0xF7F5F0);
 const camera = new THREE.PerspectiveCamera(35, 1, 0.01, 100);
 camera.position.set(0, 0, 3);
 
-const hemi = new THREE.HemisphereLight(0xffffff, 0xb8b8b8, 0.4);
-scene.add(hemi);
-
-const dir = new THREE.DirectionalLight(0xffffff, 0.6);
-dir.position.set(1.5, 2, 1.5);
-scene.add(dir);
+const lighting = createLightingManager(renderer, scene);
+lighting.loadHDRI('studio').then(() => { needsRender = true; });
 
 const controls = createViewer({ canvas, scene, camera, renderer });
 
@@ -71,3 +69,7 @@ loadModel(modelUrl, scene, camera, controls, renderer)
     console.error('Failed to load model', err);
     statusEl.textContent = 'Load failed';
   });
+
+hdriSelect.addEventListener('change', (e) => {
+  lighting.loadHDRI(e.target.value).then(() => { needsRender = true; });
+});

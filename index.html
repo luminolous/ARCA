@@ -16,7 +16,17 @@
           <span class="wordmark-text">ARCA</span>
           <span class="wordmark-dot" aria-hidden="true"></span>
         </div>
-        <div id="status" class="status" role="status" aria-live="polite"></div>
+        <div class="topbar-controls">
+          <label class="select-field">
+            <span class="visually-hidden">Environment</span>
+            <select id="hdri-select" class="select-quiet" aria-label="Environment">
+              <option value="studio">Studio</option>
+              <option value="outdoor">Outdoor</option>
+              <option value="museum">Museum</option>
+            </select>
+          </label>
+          <div id="status" class="status" role="status" aria-live="polite"></div>
+        </div>
       </header>
       <canvas id="stage"></canvas>
     </div>
