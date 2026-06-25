@@ -8,12 +8,12 @@ ARCA is the Jobdesk 3 deliverable of a five-person Computer Graphics course fina
 
 ## Demo
 
-Live: https://huggingface.co/spaces/<username>/arca (filled in after first deploy)
+Live: https://huggingface.co/spaces/lumicero/arca (filled in after first deploy)
 
 ## Run locally
 
 ```bash
-git clone https://github.com/<username>/arca.git
+git clone https://github.com/luminolous/arca.git
 cd arca
 npm install
 npm run dev
