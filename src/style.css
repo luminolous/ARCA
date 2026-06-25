@@ -309,6 +309,38 @@ html, body {
   cursor: not-allowed;
 }
 
+.display-gui {
+  margin-top: 4px;
+}
+
+.display-gui .lil-gui {
+  --background-color: transparent;
+  --text-color: var(--ink);
+  --title-background-color: transparent;
+  --title-text-color: var(--ink);
+  --widget-color: var(--paper-edge);
+  --hover-color: var(--indigo-soft);
+  --focus-color: var(--indigo);
+  --number-color: var(--indigo);
+  --string-color: var(--ink-soft);
+  --font-size: 12px;
+  --font-family: var(--font-body);
+  --font-family-mono: var(--font-mono);
+  --padding: 8px;
+  --spacing: 6px;
+  --slider-knob-width: 2px;
+  --slider-input-width: 25%;
+  --color-input-width: 25%;
+  --slider-input-min-width: 45px;
+  --color-input-min-width: 45px;
+  --folder-indent: 8px;
+  --widget-padding: 0 4px;
+  --widget-border-radius: 2px;
+  --checkbox-size: 14px;
+  --scrollbar-width: 4px;
+  width: 100%;
+}
+
 .bottom-bar {
   position: fixed;
   left: 0;

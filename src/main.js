@@ -1,20 +1,24 @@
 // Entry point. Builds the WebGL renderer, attaches HDRI lighting, the
-// gallery rail, the inspect panel, the metadata overlay, and the
-// screenshot button, then drives model swaps. Each swap disposes the
-// previous model's geometry, materials, and textures, then re-applies
-// the current inspect mode so the user sees their chosen view on the new
-// artifact. Renders lazily: only when controls report a change or
-// damping is still settling. When the URL carries shot=1, the screenshot
-// fires once after the model finishes loading so the headless capture
-// notebook in stage 10 can drive batch renders.
+// gallery rail, the inspect panel, the metadata overlay, the screenshot
+// button, and the lil-gui Display folder. Reads SPEC 5.2 URL state on
+// boot to restore the shared view, and writes back on every control
+// change so the address bar is always a live snapshot. Renders lazily.
 
 import * as THREE from 'three';
+import GUI from 'lil-gui';
 import { createViewer, loadModel } from './viewer.js';
 import { createLightingManager } from './lighting.js';
 import { createInspector, INSPECT_MODES } from './inspect.js';
 import { createGallery } from './gallery.js';
 import { createMetadataOverlay } from './metadata.js';
 import { takeScreenshot } from './screenshot.js';
+import { readState, writeState } from './url-state.js';
+
+const TONE_MAPPING = {
+  aces: THREE.ACESFilmicToneMapping,
+  reinhard: THREE.ReinhardToneMapping,
+  linear: THREE.LinearToneMapping,
+};
 
 const canvas = document.getElementById('stage');
 const statusEl = document.getElementById('status');
@@ -23,11 +27,14 @@ const inspectPanel = document.getElementById('inspect-panel');
 const galleryRail = document.getElementById('gallery-rail');
 const metadataContainer = document.getElementById('metadata-pills');
 const screenshotBtn = document.getElementById('screenshot-btn');
+const displayGuiContainer = document.getElementById('display-gui');
+
+const state = readState();
 
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
 renderer.outputColorSpace = THREE.SRGBColorSpace;
-renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.0;
+renderer.toneMapping = TONE_MAPPING[state.tone] ?? THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = state.exposure;
 renderer.setClearColor(0xF7F5F0, 1.0);
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 
@@ -40,14 +47,15 @@ camera.position.set(0, 0, 3);
 let needsRender = true;
 
 const lighting = createLightingManager(renderer, scene);
-lighting.loadHDRI('studio').then(() => { needsRender = true; });
+hdriSelect.value = state.hdri;
+lighting.loadHDRI(state.hdri).then(() => { needsRender = true; });
 
 const controls = createViewer({ canvas, scene, camera, renderer });
 
 let activeMesh = null;
 let activeRoot = null;
 let activeStem = null;
-let currentInspectMode = 'lit';
+let currentInspectMode = state.view;
 const inspector = createInspector(() => activeMesh);
 const metadata = createMetadataOverlay(metadataContainer);
 
@@ -120,13 +128,37 @@ for (const btn of inspectButtons) {
     inspector.setMode(mode);
     currentInspectMode = mode;
     setActiveButton(mode);
+    writeState({ view: mode });
     needsRender = true;
   });
 }
 
 hdriSelect.addEventListener('change', (e) => {
-  lighting.loadHDRI(e.target.value).then(() => { needsRender = true; });
+  const key = e.target.value;
+  lighting.loadHDRI(key).then(() => { needsRender = true; });
+  writeState({ hdri: key });
 });
+
+const displaySettings = {
+  exposure: state.exposure,
+  tone: state.tone,
+};
+
+const gui = new GUI({ container: displayGuiContainer, title: 'Display' });
+gui.add(displaySettings, 'exposure', 0.2, 3.0, 0.05)
+  .name('Exposure')
+  .onChange((value) => {
+    renderer.toneMappingExposure = value;
+    writeState({ exposure: value });
+    needsRender = true;
+  });
+gui.add(displaySettings, 'tone', { ACES: 'aces', Reinhard: 'reinhard', Linear: 'linear' })
+  .name('Tone')
+  .onChange((value) => {
+    renderer.toneMapping = TONE_MAPPING[value] ?? THREE.ACESFilmicToneMapping;
+    writeState({ tone: value });
+    needsRender = true;
+  });
 
 let manifestByStem = new Map();
 
@@ -187,6 +219,7 @@ const gallery = await createGallery({
   container: galleryRail,
   onSelect: (stem) => {
     gallery.setActive(stem);
+    writeState({ model: stem });
     loadStem(stem);
   },
 });
@@ -194,18 +227,15 @@ const gallery = await createGallery({
 const entries = gallery.getEntries();
 for (const entry of entries) manifestByStem.set(entry.stem, entry);
 
-const params = new URLSearchParams(window.location.search);
-const shotMode = params.get('shot') === '1';
-const requestedStem = params.get('model');
-
-const initialStem = (requestedStem && manifestByStem.has(requestedStem))
-  ? requestedStem
+const initialStem = (state.model && manifestByStem.has(state.model))
+  ? state.model
   : (entries[0]?.stem ?? null);
 
 if (initialStem) {
   gallery.setActive(initialStem);
+  writeState({ model: initialStem });
   loadStem(initialStem).then(() => {
-    if (shotMode) {
+    if (state.shot === 1) {
       setTimeout(() => {
         takeScreenshot({
           renderer,
