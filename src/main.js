@@ -1,20 +1,28 @@
-// Entry point. Builds the WebGL renderer, attaches HDRI lighting and the
-// gallery rail, and drives model swaps. Each swap disposes the previous
-// model's geometry, materials, and textures, then re-applies the current
-// inspect mode so the user sees their chosen view on the new artifact.
-// Renders lazily: only when controls report a change or damping settles.
+// Entry point. Builds the WebGL renderer, attaches HDRI lighting, the
+// gallery rail, the inspect panel, the metadata overlay, and the
+// screenshot button, then drives model swaps. Each swap disposes the
+// previous model's geometry, materials, and textures, then re-applies
+// the current inspect mode so the user sees their chosen view on the new
+// artifact. Renders lazily: only when controls report a change or
+// damping is still settling. When the URL carries shot=1, the screenshot
+// fires once after the model finishes loading so the headless capture
+// notebook in stage 10 can drive batch renders.
 
 import * as THREE from 'three';
 import { createViewer, loadModel } from './viewer.js';
 import { createLightingManager } from './lighting.js';
 import { createInspector, INSPECT_MODES } from './inspect.js';
 import { createGallery } from './gallery.js';
+import { createMetadataOverlay } from './metadata.js';
+import { takeScreenshot } from './screenshot.js';
 
 const canvas = document.getElementById('stage');
 const statusEl = document.getElementById('status');
 const hdriSelect = document.getElementById('hdri-select');
 const inspectPanel = document.getElementById('inspect-panel');
 const galleryRail = document.getElementById('gallery-rail');
+const metadataContainer = document.getElementById('metadata-pills');
+const screenshotBtn = document.getElementById('screenshot-btn');
 
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
 renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -38,8 +46,10 @@ const controls = createViewer({ canvas, scene, camera, renderer });
 
 let activeMesh = null;
 let activeRoot = null;
+let activeStem = null;
 let currentInspectMode = 'lit';
 const inspector = createInspector(() => activeMesh);
+const metadata = createMetadataOverlay(metadataContainer);
 
 function resize() {
   const width = canvas.clientWidth;
@@ -118,6 +128,8 @@ hdriSelect.addEventListener('change', (e) => {
   lighting.loadHDRI(e.target.value).then(() => { needsRender = true; });
 });
 
+let manifestByStem = new Map();
+
 async function loadStem(stem) {
   statusEl.textContent = 'Loading...';
 
@@ -131,21 +143,45 @@ async function loadStem(stem) {
   try {
     const result = await loadModel(`./models/${stem}_low.glb`, scene, camera, controls, renderer);
     activeRoot = result.object;
+    activeStem = stem;
     result.object.traverse((node) => {
       if (node.isMesh && !activeMesh) activeMesh = node;
     });
     statusEl.textContent = `Loaded ${stem}`;
     enableInspectButtons();
+    screenshotBtn.disabled = false;
     if (currentInspectMode !== 'lit') {
       inspector.setMode(currentInspectMode);
     }
     setActiveButton(currentInspectMode);
+
+    const entry = manifestByStem.get(stem) || {};
+    metadata.update({
+      vertexCount: result.vertexCount,
+      triangleCount: result.triangleCount,
+      fileSize: entry.glb_bytes,
+      seconds: entry.seconds,
+    });
+
     needsRender = true;
+    return result;
   } catch (err) {
     console.error('Failed to load model', err);
     statusEl.textContent = 'Load failed';
+    throw err;
   }
 }
+
+screenshotBtn.addEventListener('click', () => {
+  if (!activeStem) return;
+  takeScreenshot({
+    renderer,
+    scene,
+    camera,
+    stem: activeStem,
+    viewName: currentInspectMode,
+  }).catch((err) => console.error('Screenshot failed', err));
+});
 
 const gallery = await createGallery({
   container: galleryRail,
@@ -156,10 +192,36 @@ const gallery = await createGallery({
 });
 
 const entries = gallery.getEntries();
-if (entries.length > 0) {
-  const firstStem = entries[0].stem;
-  gallery.setActive(firstStem);
-  loadStem(firstStem);
+for (const entry of entries) manifestByStem.set(entry.stem, entry);
+
+const params = new URLSearchParams(window.location.search);
+const shotMode = params.get('shot') === '1';
+const requestedStem = params.get('model');
+
+const initialStem = (requestedStem && manifestByStem.has(requestedStem))
+  ? requestedStem
+  : (entries[0]?.stem ?? null);
+
+if (initialStem) {
+  gallery.setActive(initialStem);
+  loadStem(initialStem).then(() => {
+    if (shotMode) {
+      setTimeout(() => {
+        takeScreenshot({
+          renderer,
+          scene,
+          camera,
+          stem: activeStem,
+          viewName: currentInspectMode,
+        }).then(() => {
+          window.__arcaShotDone = true;
+        }).catch((err) => {
+          console.error('Headless screenshot failed', err);
+          window.__arcaShotDone = true;
+        });
+      }, 500);
+    }
+  });
 } else {
   statusEl.textContent = 'No models in manifest';
 }
