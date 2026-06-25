@@ -29,6 +29,18 @@
         </div>
       </header>
       <canvas id="stage"></canvas>
+      <aside id="inspect-panel" class="inspect-panel glass" aria-label="Inspect">
+        <h2 class="panel-heading">Inspect</h2>
+        <div class="panel-divider"></div>
+        <div class="inspect-buttons">
+          <button type="button" class="btn-quiet" data-mode="lit" aria-pressed="false">Lit</button>
+          <button type="button" class="btn-quiet" data-mode="wireframe" aria-pressed="false">Wireframe</button>
+          <button type="button" class="btn-quiet" data-mode="basecolor" aria-pressed="false">Base color</button>
+          <button type="button" class="btn-quiet" data-mode="normal-vec" aria-pressed="false">Normal vector</button>
+          <button type="button" class="btn-quiet" data-mode="normal-map" aria-pressed="false">Normal map</button>
+          <button type="button" class="btn-quiet" data-mode="roughness" aria-pressed="false">Roughness</button>
+        </div>
+      </aside>
     </div>
     <script type="module" src="/src/main.js"></script>
   </body>
