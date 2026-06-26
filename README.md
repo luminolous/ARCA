@@ -10,7 +10,7 @@ Interactive 3D viewer for Indonesian cultural artifacts reconstructed from a sin
 [![Hugging Face](https://img.shields.io/badge/Hugging%20Face-Space-FFD21E?style=flat&logo=huggingface&logoColor=black)](https://huggingface.co/spaces/lumicero/arca)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-[**Live demo**](https://huggingface.co/spaces/lumicero/arca) · [Report an issue](https://github.com/luminolous/arca/issues)
+[**Live demo**](https://huggingface.co/spaces/lumicero/arca) · [3D File Generation Notebook](https://github.com/eycoo/FP_GRAFKOM) · [Report an issue](https://github.com/luminolous/arca/issues)
 
 <br />
 
@@ -81,6 +81,7 @@ notebooks/
 
 ## Acknowledgments
 
+- Notebook / pipeline for dataset preprocessing and 3D file generation: [eycoo/FP_GRAFKOM](https://github.com/eycoo/FP_GRAFKOM)
 - Upstream model: [Stable Fast 3D](https://github.com/Stability-AI/stable-fast-3d) by Stability AI
 - HDRI environments: [Poly Haven](https://polyhaven.com) under CC0
 - 3D engine and loaders: [Three.js](https://threejs.org/) and its `examples/jsm` collection
